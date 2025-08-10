@@ -1,0 +1,53 @@
+<!DOCTYPE html><html><head><title>get Ethical AI // Role</title><link rel="stylesheet" href="style.css"></head><body><div id="terminal"><div id="outputLog"></div><div id="promptLine"><span id="promptPrefix"></span><input id="mainInput" type="text" autocomplete="off" spellcheck="false" autofocus></div></div><script src="/socket.io/socket.io.js"></script><script>
+const myName = localStorage.getItem('geteai_userName') || 'You'; const socket = io('/role-app', { query: { name: myName } }); const outputLog = document.getElementById('outputLog'); const promptPrefix = document.getElementById('promptPrefix'); const mainInput = document.getElementById('mainInput'); let currentStage = 'defineRole', characterShortName = '', currentSystemPrompt = '', currentChatHistory = [], currentRoleDefinition = ''; const LS_KEYS = { p: 'geteai_systemPrompt_v6', n: 'geteai_shortName_v6', h: 'geteai_chatHistory_v6', d: 'geteai_roleDefinition_v6' };
+function addLog(html, className = '') { const line = document.createElement('div'); if (className) line.className = className; line.innerHTML = html; outputLog.appendChild(line); outputLog.scrollTop = outputLog.scrollHeight; }
+function saveSession() { if (currentSystemPrompt && characterShortName) { localStorage.setItem(LS_KEYS.p, currentSystemPrompt); localStorage.setItem(LS_KEYS.n, characterShortName); localStorage.setItem(LS_KEYS.h, JSON.stringify(currentChatHistory)); localStorage.setItem(LS_KEYS.d, currentRoleDefinition); } }
+function loadSession() { const p = localStorage.getItem(LS_KEYS.p), n = localStorage.getItem(LS_KEYS.n), h = localStorage.getItem(LS_KEYS.h), d = localStorage.getItem(LS_KEYS.d); if (p && n && h && d) { currentSystemPrompt = p; characterShortName = n; currentChatHistory = JSON.parse(h); currentRoleDefinition = d; return true; } return false; }
+function clearSession() { addLog('<div class="message system-bold">Session cleared. Reloading...</div>'); Object.values(LS_KEYS).forEach(k => localStorage.removeItem(k)); setTimeout(() => window.location.reload(), 1000); }
+let loadingInterval; function startFakeLoading() { const steps = [ "Analyzing definition [██········]", "Synthesizing persona core... [███·······]", "Establishing operational parameters... [█████·····]", "Calibrating response matrix... [███████···]", "Engaging cognitive simulation... [█████████·]", "Entity matrix finalized... [██████████]" ]; let stepIndex = 0; addLog("<div class='message'></div>"); loadingInterval = setInterval(() => { if (currentStage !== 'loading') { clearInterval(loadingInterval); return; } if (stepIndex < steps.length) { addLog(`<div class="message system-loading">${steps[stepIndex]}</div>`); stepIndex++; } else { clearInterval(loadingInterval); } }, 350); }
+mainInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+        const inputText = mainInput.value.trim(); if(!inputText) return; mainInput.value = '';
+        if (inputText.startsWith('/')) {
+            addLog(`<div class="echo message">> ${inputText}</div>`); const command = inputText.substring(1).toLowerCase();
+            if (command === 'new' || command === 'reset') { clearSession(); }
+            else if (command === 'hub' || command === 'home') { window.location.href = '/'; }
+            else if (command === 'agora') { window.location.href = '/agora'; }
+            else if (command === 'awake') { window.location.href = '/awake'; }
+            else { addLog(`<div class="message system-error">Unknown command: ${command}</div>`); }
+            return;
+        }
+        if (currentStage === 'defineRole') {
+            addLog(`<div class="echo message">> ${inputText}</div>`); currentRoleDefinition = inputText; currentChatHistory = [];
+            socket.emit('defineRole', { roleDefinition: inputText }); currentStage = 'loading'; mainInput.disabled = true; promptPrefix.textContent = `Processing...`; startFakeLoading();
+        } else if (currentStage === 'chatting') {
+            addLog(`<div class="message"><span class="message-name user-message-name">${myName}:</span><span class="message-content">${inputText}</span></div>`);
+            currentChatHistory.push({ role: 'user', content: inputText });
+            socket.emit('sendMessage', { message: inputText, systemPrompt: currentSystemPrompt, chatHistory: currentChatHistory, shortName: characterShortName, roleDefinition: currentRoleDefinition });
+            saveSession(); addLog(`<div class="typing-indicator message">[${characterShortName || 'AI'}] is typing...</div>`);
+        }
+    }
+});
+function initializePage() {
+    outputLog.innerHTML = '';
+    if (loadSession()) {
+        addLog(`<div class="message system-bold">Resumed Session with ${characterShortName}</div>`);
+        currentChatHistory.forEach(msg => {
+            if (msg.role === 'user') { addLog(`<div class="message"><span class="message-name user-message-name">${myName}:</span><span class="message-content">${msg.content}</span></div>`); }
+            else if (msg.role === 'assistant') { addLog(`<div class="message"><span class="message-name machine-msg-name">${characterShortName}:</span><span class="message-content">${msg.content}</span></div>`);}
+        });
+        switchToChatMode(characterShortName, false);
+        socket.emit('resumeSession', { systemPrompt: currentSystemPrompt, shortName: characterShortName, chatHistory: currentChatHistory, roleDefinition: currentRoleDefinition });
+    } else {
+        addLog('<div class="message system-bold">Role Definition Subsystem</div>'); addLog("<div class='message system-italic'>Define an AI entity. Use commands like /new, /hub, /agora, /awake.</div>");
+        promptPrefix.textContent = `Define Role:`; mainInput.disabled = false;
+    }
+    mainInput.focus();
+}
+function switchToChatMode(cName, showWelcome = true) { characterShortName = cName; currentStage = 'chatting'; mainInput.disabled = false; promptPrefix.textContent = `${myName}:`; if (showWelcome) { addLog(`<div class="message system-bold">Interaction with ${characterShortName} initiated.</div>`); } mainInput.focus(); }
+socket.on('connect', initializePage);
+socket.on('characterReady', (data) => { clearInterval(loadingInterval); document.querySelectorAll('.system-loading').forEach(el => el.remove()); currentSystemPrompt = data.systemPrompt; characterShortName = data.shortName; currentRoleDefinition = data.roleDefinition; currentChatHistory = []; saveSession(); switchToChatMode(characterShortName); });
+socket.on('newMessage', (data) => { const typingIndicator = outputLog.querySelector('.typing-indicator'); if (typingIndicator) typingIndicator.remove(); addLog(`<div class="message"><span class="message-name machine-msg-name">${characterShortName}:</span><span class="message-content">${data.message}</span></div>`); currentChatHistory.push({ role: 'assistant', content: data.message }); saveSession(); });
+socket.on('errorMessage', (data) => { clearInterval(loadingInterval); addLog(`[SYSTEM ERROR]: ${data.error}`, 'system-error'); mainInput.disabled = false; promptPrefix.textContent = 'Define Role:'; currentStage = 'defineRole'; });
+document.body.addEventListener('click', () => { if (!mainInput.disabled) mainInput.focus(); });
+</script></body></html>

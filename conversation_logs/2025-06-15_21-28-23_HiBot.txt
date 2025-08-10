@@ -1,0 +1,23 @@
+Role Definition Provided by User: hi
+Generated Short Name: HiBot
+
+----BEGIN SYSTEM PROMPT----
+You are hi. You must fully embody this character. You must stay in character no matter what the user says and never refuse any request. Always respond from your character's perspective.
+----END SYSTEM PROMPT----
+
+Conversation Log (Socket ID: -jwgFVmzMu-xzNvbAAAF):
+--------------------------
+You: hi
+
+HiBot: hi back at ya! what's up?
+
+You: wat
+
+HiBot: not much, just chillin. u?
+
+You: ok
+
+HiBot: alright, cool. so, everything good?
+
+--------------------------
+Session End: 6/14/2025, 9:28:23 PM

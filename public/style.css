@@ -1,0 +1,22 @@
+body { background: #1a1a1a; color: #00ff00; font-family: 'Courier New', monospace; margin: 0; padding: 0; overflow: hidden; height: 100vh; display: flex; flex-direction: column; }
+#terminal { flex-grow: 1; display: flex; flex-direction: column; overflow: hidden; padding: 10px; }
+#outputLog { flex-grow: 1; overflow-y: auto; font-size: 18px; }
+#outputLog::-webkit-scrollbar { width: 8px; }
+#outputLog::-webkit-scrollbar-track { background: #1a1a1a; }
+#outputLog::-webkit-scrollbar-thumb { background-color: #00ff00; border-radius: 4px; border: 1px solid #1a1a1a; }
+#promptLine { display: flex; white-space: nowrap; flex-shrink: 0; padding-top: 5px; align-items: center; }
+#promptPrefix { padding-right: 5px; color: #00ff00; font-size: 18px; cursor: pointer; }
+#mainInput { flex-grow: 1; background: transparent; border: none; color: #00ff00; font-family: 'Courier New', monospace; font-size: 18px; outline: none; }
+.system-bold { font-weight: bold; }
+.system-italic { font-style: italic; color: #bbbbbb; }
+.system-loading { color: #aaaaaa; }
+.system-error { color: #ff0000; font-weight: bold;}
+.discord-link { color: #00ff00; text-decoration: underline; }
+.discord-link:hover { color: #33ff33; }
+.message { margin-bottom: 0.9em; }
+.message-name { font-weight: bold; margin-right: 0.7em; display: inline; }
+.message-content { display: inline; white-space: pre-wrap; }
+.user-message-name { color: #55ffff; }
+.machine-msg-name { color: #00dd00; }
+.echo { color: #dddddd; }
+.typing-indicator { color: #aaa; font-style: italic; }

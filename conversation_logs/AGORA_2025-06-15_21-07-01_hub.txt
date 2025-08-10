@@ -1,0 +1,18 @@
+--- PANELISTS ---
+- Sarah: Stay-at-home mom (Remote work provides more flexibility for parents and should be encouraged.) [Style: Speaks calmly and uses personal anecdotes]
+- John: Small business owner (In-person collaboration is essential for creativity and productivity.) [Style: Blunt and uses occasional slang]
+- Aisha: College student (Remote work allows for better work-life balance and should be the standard.) [Style: Passionate and sometimes gets emotional]
+
+--- DEBATE LOG ---
+Topic: /hub
+
+You: hi
+
+You: /hub
+
+You: /role
+
+You: home
+
+--------------------------
+Session End: 6/14/2025, 9:07:01 PM
