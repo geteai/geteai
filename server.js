@@ -1,4 +1,4 @@
-// server.js (V17.1 - The "No Bullshit" Name Protocol)
+// server.js (V17.2 - SyntaxError Fix)
 
 const express = require('express');
 const app = express();
@@ -321,7 +321,7 @@ function generateFallbackName() {
 
 async function generateHumanName() {
     try {
-        const completion = await openai.chat.completions..create({
+        const completion = await openai.chat.completions.create({
             model: UNIFIED_MODEL_ID,
             messages: [{ role: "system", content: PROMPT_NAME_GENERATOR_SYSTEM }, { role: "user", content: "Generate one name." }],
             max_tokens: 15,
