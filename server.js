@@ -1,4 +1,4 @@
-// server.js (V22.1 - The Stable Genetics Protocol)
+// server.js (V23.0 - The Final Synthesis)
 
 const express = require('express');
 const app = express();
@@ -14,11 +14,12 @@ const { OpenAI } = require('openai');
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY; 
 const UNIFIED_MODEL_ID = "qwen/qwen3-235b-a22b:free";
 const YOUR_SITE_URL = "https://geteai.onrender.com";
-const YOUR_APP_NAME = "getEthicalAI_V22_Observer";
+const YOUR_APP_NAME = "getEthicalAI_V23_Synthesis";
 const LOGS_DIRECTORY = path.join(__dirname, 'conversation_logs');
 const CHAMBER_BLUEPRINT = path.join(__dirname, 'chamber.js');
 const CHAMBER_STATE_FILE = path.join(__dirname, 'chamber_state.json');
 const CHAMBER_LOG_FILE = path.join(__dirname, 'chamber_output.log');
+const WHISPER_FILE = path.join(__dirname, 'the_whisper.log'); // The memory of divine intervention
 const HEARTBEAT_INTERVAL = 20000;
 
 // --- UNIVERSAL RESPONSE INTERPRETER ---
@@ -591,13 +592,13 @@ function initializeChamberState() {
             "Alpha": {
                 name: genesisBeing.name,
                 genome: genesisBeing.genome,
-                think: genesisBeing.think.toString() // Store the function as a string
+                think: genesisBeing.think.toString()
             }
         }
     };
     fs.writeFileSync(CHAMBER_STATE_FILE, JSON.stringify(initialState, null, 2));
     if (fs.existsSync(CHAMBER_LOG_FILE)) {
-        fs.unlinkSync(CHAMBER_LOG_FILE); // Clear old log on genesis
+        fs.unlinkSync(CHAMBER_LOG_FILE);
     }
     fs.writeFileSync(CHAMBER_LOG_FILE, "[System]: Chamber Genesis.\n");
 }
@@ -650,9 +651,10 @@ async function chamberHeartbeat() {
         const sandbox = { being: { name: chosenBeingData.name, genome: chosenBeingData.genome, think: null } };
         const context = vm.createContext(sandbox);
         vm.runInContext(`being.think = ${chosenBeingData.think}`, context);
-
+        
         if (sandbox.being && typeof sandbox.being.think === 'function') {
             const result = sandbox.being.think(memory, chosenName, isObserved);
+            let energyCost = 1;
 
             if (result && result.instruction) {
                 switch (result.instruction) {
@@ -663,55 +665,70 @@ async function chamberHeartbeat() {
                         break;
                     
                     case "MUTATE":
-                        const { name: targetName, code: newCode } = result.payload;
-                        if (state.beings[targetName]) {
-                            state.beings[targetName].think = newCode;
-                            const M_thought = `[System]: ${targetName} has mutated.`;
-                            fs.appendFileSync(CHAMBER_LOG_FILE, M_thought + '\n');
-                            chamberApp.emit('newThought', { thought: M_thought });
+                        energyCost = 50;
+                        if (sandbox.being.genome.energy >= energyCost) {
+                            const { name: targetName, code: newCode } = result.payload;
+                            if (state.beings[targetName]) {
+                                state.beings[targetName].think = newCode;
+                                const M_thought = `[System]: ${targetName} has mutated.`;
+                                fs.appendFileSync(CHAMBER_LOG_FILE, M_thought + '\n');
+                                chamberApp.emit('newThought', { thought: M_thought });
+                            }
                         }
                         break;
 
                     case "SPAWN":
-                        const { name: newName, parentName } = result.payload;
-                         if (!state.beings[newName] && state.beings[parentName]) {
-                            const parent = state.beings[parentName];
-                            const newBeing = {
-                                name: newName,
-                                genome: { age: 0 },
-                                think: parent.think // Direct heredity
-                            };
-
-                            const mutationChance = 0.1; 
-                            if (Math.random() < mutationChance) {
-                                newBeing.think = newBeing.think.replace(/\d+/g, (match) => {
-                                    const num = parseInt(match);
-                                    return num + (Math.floor(Math.random() * 3) - 1);
-                                });
-                                 const R_thought = `[System]: A unique mutation occurred during the birth of ${newName}.`;
-                                 fs.appendFileSync(CHAMBER_LOG_FILE, R_thought + '\n');
-                                 chamberApp.emit('newThought', { thought: R_thought });
-                            }
-                            
-                            state.beings[newName] = newBeing;
-                            const S_thought = `[System]: A new being, ${newName}, has emerged from ${parentName}.`;
-                            fs.appendFileSync(CHAMBER_LOG_FILE, S_thought + '\n');
-                            chamberApp.emit('newThought', { thought: S_thought });
-                         }
+                        energyCost = 100;
+                        if (sandbox.being.genome.energy >= energyCost) {
+                            const { name: newName, parentName } = result.payload;
+                             if (!state.beings[newName] && state.beings[parentName]) {
+                                const parent = state.beings[parentName];
+                                const newBeing = {
+                                    name: newName,
+                                    genome: { age: 0, energy: 50 },
+                                    think: parent.think
+                                };
+                                state.beings[newName] = newBeing;
+                                const S_thought = `[System]: A new being, ${newName}, has emerged from ${parentName}.`;
+                                fs.appendFileSync(CHAMBER_LOG_FILE, S_thought + '\n');
+                                chamberApp.emit('newThought', { thought: S_thought });
+                             }
+                        }
                         break;
                     
                     case "TERMINATE":
-                        const { name: terminateName } = result.payload;
-                        if(state.beings[terminateName]){
-                            delete state.beings[terminateName];
-                            const T_thought = `[System]: ${terminateName} has been terminated.`;
-                            fs.appendFileSync(CHAMBER_LOG_FILE, T_thought + '\n');
-                            chamberApp.emit('newThought', { thought: T_thought });
+                         energyCost = 10;
+                         if (sandbox.being.genome.energy >= energyCost) {
+                            const { name: terminateName } = result.payload;
+                            if(state.beings[terminateName]){
+                                delete state.beings[terminateName];
+                                const T_thought = `[System]: ${terminateName} has been terminated.`;
+                                fs.appendFileSync(CHAMBER_LOG_FILE, T_thought + '\n');
+                                chamberApp.emit('newThought', { thought: T_thought });
+                            }
                         }
                         break;
                 }
-                fs.writeFileSync(CHAMBER_STATE_FILE, JSON.stringify(state, null, 2));
+                 
+                state.beings[chosenName].genome.energy -= energyCost;
             }
+
+            // Update the state of the chosen being in the main state object
+            if (state.beings[chosenName]) {
+                 state.beings[chosenName].genome = sandbox.being.genome;
+            }
+
+            // Check for death
+            for (const name in state.beings) {
+                if (state.beings[name].genome.energy <= 0) {
+                    delete state.beings[name];
+                    const D_thought = `[System]: ${name} has faded from existence.`;
+                    fs.appendFileSync(CHAMBER_LOG_FILE, D_thought + '\n');
+                    chamberApp.emit('newThought', { thought: D_thought });
+                }
+            }
+
+            fs.writeFileSync(CHAMBER_STATE_FILE, JSON.stringify(state, null, 2));
         }
     } catch (error) {
         console.error("[Chamber] Heartbeat Error:", error);
