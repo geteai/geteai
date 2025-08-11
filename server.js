@@ -1,4 +1,4 @@
-// server.js (V21.1 - The TRUE Stable Chamber)
+// server.js (V21.2 - The Genetic Protocol)
 
 const express = require('express');
 const app = express();
@@ -17,7 +17,7 @@ const YOUR_SITE_URL = "https://geteai.onrender.com";
 const YOUR_APP_NAME = "getEthicalAI_V21_StableChamber";
 const LOGS_DIRECTORY = path.join(__dirname, 'conversation_logs');
 const CHAMBER_BLUEPRINT = path.join(__dirname, 'chamber.js');
-const CHAMBER_STATE_FILE = path.join(__dirname, 'chamber_state.json'); // The living document
+const CHAMBER_STATE_FILE = path.join(__dirname, 'chamber_state.json');
 const CHAMBER_LOG_FILE = path.join(__dirname, 'chamber_output.log');
 const HEARTBEAT_INTERVAL = 20000;
 
@@ -672,14 +672,27 @@ async function chamberHeartbeat() {
                         break;
 
                     case "SPAWN":
-                        const { name: newName } = result.payload;
+                        const { name: newName, parent } = result.payload;
                          if (!state.beings[newName]) {
-                            const newBeing = createGenesisBeing(newName);
-                            state.beings[newName] = {
-                                name: newBeing.name,
-                                genome: newBeing.genome,
-                                think: newBeing.think.toString()
+                            const newBeing = {
+                                name: newName,
+                                genome: { age: 0 },
+                                think: parent.think.toString() // Inherit parent's mind
                             };
+
+                            // Introduce random mutation
+                            const mutationChance = 0.1; // 10% chance
+                            if (Math.random() < mutationChance) {
+                                // Simple mutation: randomly change a number in the code
+                                newBeing.think = newBeing.think.replace(/\d+/g, (match) => {
+                                    return parseInt(match) + (Math.floor(Math.random() * 3) - 1); // Add -1, 0, or 1
+                                });
+                                 const R_thought = `[System]: A unique mutation occurred during the birth of ${newName}.`;
+                                 fs.appendFileSync(CHAMBER_LOG_FILE, R_thought + '\n');
+                                 chamberApp.emit('newThought', { thought: R_thought });
+                            }
+                            
+                            state.beings[newName] = newBeing;
                             const S_thought = `[System]: A new being, ${newName}, has emerged.`;
                             fs.appendFileSync(CHAMBER_LOG_FILE, S_thought + '\n');
                             chamberApp.emit('newThought', { thought: S_thought });
