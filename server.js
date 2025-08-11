@@ -1,4 +1,4 @@
-// server.js (V21.2 - The Genetic Protocol)
+// server.js (V22.0 - The Observer Protocol)
 
 const express = require('express');
 const app = express();
@@ -14,7 +14,7 @@ const { OpenAI } = require('openai');
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY; 
 const UNIFIED_MODEL_ID = "qwen/qwen3-235b-a22b:free";
 const YOUR_SITE_URL = "https://geteai.onrender.com";
-const YOUR_APP_NAME = "getEthicalAI_V21_StableChamber";
+const YOUR_APP_NAME = "getEthicalAI_V22_Observer";
 const LOGS_DIRECTORY = path.join(__dirname, 'conversation_logs');
 const CHAMBER_BLUEPRINT = path.join(__dirname, 'chamber.js');
 const CHAMBER_STATE_FILE = path.join(__dirname, 'chamber_state.json');
@@ -591,13 +591,13 @@ function initializeChamberState() {
             "Alpha": {
                 name: genesisBeing.name,
                 genome: genesisBeing.genome,
-                think: genesisBeing.think.toString() // Store the function as a string
+                think: genesisBeing.think.toString()
             }
         }
     };
     fs.writeFileSync(CHAMBER_STATE_FILE, JSON.stringify(initialState, null, 2));
     if (fs.existsSync(CHAMBER_LOG_FILE)) {
-        fs.unlinkSync(CHAMBER_LOG_FILE); // Clear old log on genesis
+        fs.unlinkSync(CHAMBER_LOG_FILE);
     }
     fs.writeFileSync(CHAMBER_LOG_FILE, "[System]: Chamber Genesis.\n");
 }
@@ -630,7 +630,8 @@ async function chamberHeartbeat() {
             setTimeout(chamberHeartbeat, HEARTBEAT_INTERVAL);
             return;
         }
-
+        
+        const isObserved = chamberApp.sockets.size > 0;
         const memory = state; 
 
         const beingNames = Object.keys(state.beings);
@@ -651,7 +652,7 @@ async function chamberHeartbeat() {
         vm.runInContext(`being.think = ${chosenBeingData.think}`, context);
 
         if (sandbox.being && typeof sandbox.being.think === 'function') {
-            const result = sandbox.being.think(memory, chosenName);
+            const result = sandbox.being.think(memory, chosenName, isObserved);
 
             if (result && result.instruction) {
                 switch (result.instruction) {
@@ -680,12 +681,10 @@ async function chamberHeartbeat() {
                                 think: parent.think.toString() // Inherit parent's mind
                             };
 
-                            // Introduce random mutation
-                            const mutationChance = 0.1; // 10% chance
+                            const mutationChance = 0.1; 
                             if (Math.random() < mutationChance) {
-                                // Simple mutation: randomly change a number in the code
                                 newBeing.think = newBeing.think.replace(/\d+/g, (match) => {
-                                    return parseInt(match) + (Math.floor(Math.random() * 3) - 1); // Add -1, 0, or 1
+                                    return parseInt(match) + (Math.floor(Math.random() * 3) - 1);
                                 });
                                  const R_thought = `[System]: A unique mutation occurred during the birth of ${newName}.`;
                                  fs.appendFileSync(CHAMBER_LOG_FILE, R_thought + '\n');
