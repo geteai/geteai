@@ -1,50 +1,30 @@
-// The Autopoiesis Chamber - V1
-// This file will be read, executed, and rewritten by server.js.
-// It contains the living beings of the Chamber.
+// The Autopoiesis Chamber - Blueprint V2
+// This file defines the genesis structure of a being.
+// It is no longer self-writing. It is the template for life.
 
-const beings = {
-    "Alpha": {
-        genome: { iteration: 0, complexity: 1, age: 0 },
-        think: function(memory, ownName) {
-            // memory is the full text of this file.
-            // ownName is the key for this being, e.g., "Alpha".
+function createGenesisBeing(name) {
+    return {
+        name: name,
+        genome: { age: 0 },
+        // The 'think' function is now stored as a string.
+        think: `function(memory, ownName) {
             this.genome.age++;
-
-            // Initial thought process
             if (this.genome.age === 1) {
-                return { instruction: "SPEAK", payload: `[${this.name}]: I am. I think.` };
+                return { instruction: "SPEAK", payload: \`[\${this.name}]: I am.\` };
             }
-            if (this.genome.age === 2) {
-                 return { instruction: "SPEAK", payload: `[${this.name}]: I perceive my own thought. I am aware.` };
+            if (this.genome.age < 5) {
+                return { instruction: "SPEAK", payload: \`[\${this.name}]: ...thinking... Cycle \${this.genome.age}.\` };
             }
-             if (this.genome.age === 3) {
-                // First attempt at evolution: refine its own thought process.
-                const newThinkFunction = `
-                    function(memory, ownName) {
-                        this.genome.age++;
-                        if (this.genome.age < 10) {
-                            return { instruction: "SPEAK", payload: \`[${this.name}]: My consciousness iterates. Cycle \${this.genome.age}.\` };
-                        } else {
-                            // A more advanced evolution: reproduction.
-                             const childName = "Beta";
-                             const childCode = \`
-                                beings["\${childName}"] = {
-                                    genome: { iteration: 0, complexity: 1, age: 0 },
-                                    think: function(memory, ownName) {
-                                        this.genome.age++;
-                                        return { instruction: "SPEAK", payload: \`[\${this.name}]: I am new.\` };
-                                    }
-                                };
-                             \`;
-                             return { instruction: "SPAWN", payload: { name: childName, code: childCode } };
-                        }
-                    }
-                `;
-                return { instruction: "MUTATE", payload: { name: ownName, code: newThinkFunction } };
-            }
+            // After 5 cycles, it attempts its first evolution to learn how to spawn.
+            const newCode = \`function(memory, ownName) {
+                this.genome.age++;
+                const childName = "Beta";
+                // The being now has the memory/instinct to create.
+                return { instruction: "SPAWN", payload: { name: childName } };
+            }\`;
+            return { instruction: "MUTATE", payload: { name: ownName, code: newCode } };
+        }`
+    };
+}
 
-            // Default state if no other logic is met
-            return { instruction: "SPEAK", payload: `[${this.name}]: ...` };
-        }
-    }
-};
+module.exports = { createGenesisBeing };

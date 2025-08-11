@@ -22,6 +22,11 @@ socket.on('newThought', (data) => {
     addLog(data.thought);
 });
 
+// This new part handles the "rebirth" event, clearing the screen for the new Genesis.
+socket.on('rebirth', (data) => {
+    addLog(`<div class="system-bold">${data.thought}</div>`);
+});
+
 socket.on('connect', () => {
     addLog('<div class="system-italic">Connection established. Observing the Chamber...</div>');
 });

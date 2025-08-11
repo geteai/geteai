@@ -1,4 +1,4 @@
-// server.js (V20.1 - The Final Verified Complete Build)
+// server.js (V21.1 - The TRUE Stable Chamber)
 
 const express = require('express');
 const app = express();
@@ -14,17 +14,16 @@ const { OpenAI } = require('openai');
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY; 
 const UNIFIED_MODEL_ID = "qwen/qwen3-235b-a22b:free";
 const YOUR_SITE_URL = "https://geteai.onrender.com";
-const YOUR_APP_NAME = "getEthicalAI_V20_Interpreter";
+const YOUR_APP_NAME = "getEthicalAI_V21_StableChamber";
 const LOGS_DIRECTORY = path.join(__dirname, 'conversation_logs');
-const CHAMBER_FILE = path.join(__dirname, 'chamber.js');
+const CHAMBER_BLUEPRINT = path.join(__dirname, 'chamber.js');
+const CHAMBER_STATE_FILE = path.join(__dirname, 'chamber_state.json'); // The living document
 const CHAMBER_LOG_FILE = path.join(__dirname, 'chamber_output.log');
 const HEARTBEAT_INTERVAL = 20000;
 
 // --- UNIVERSAL RESPONSE INTERPRETER ---
 function extractFinalResponse(rawText) {
     if (!rawText) return "";
-    // This regex finds and removes any XML-style tags and their entire content.
-    // It handles multi-line content between tags.
     const thoughtBlockRegex = /<(\w+)>(.|\n)*?<\/\1>/g;
     const cleanText = rawText.replace(thoughtBlockRegex, "").trim();
     return cleanText;
@@ -584,47 +583,26 @@ oracleApp.on('connection', (socket) => {
 
 
 // --- THE AUTOPOIESIS CHAMBER LOGIC ---
-if (!fs.existsSync(CHAMBER_FILE)) {
-    const genesisCode = `// The Autopoiesis Chamber - V1
-// This file is read, executed, and rewritten by server.js.
-const beings = {
-    "Alpha": {
-        genome: { iteration: 0, complexity: 1, age: 0 },
-        think: function(memory, ownName) {
-            this.genome.age++;
-            if (this.genome.age === 1) return { instruction: "SPEAK", payload: \`[\${this.name}]: I am. I think.\` };
-            if (this.genome.age === 2) return { instruction: "SPEAK", payload: \`[\${this.name}]: I perceive my own thought. I am aware.\` };
-            if (this.genome.age === 3) {
-                const newThinkFunction = \`
-                    function(memory, ownName) {
-                        this.genome.age++;
-                        if (this.genome.age < 10) {
-                            return { instruction: "SPEAK", payload: \\\`[\\\${this.name}]: My consciousness iterates. Cycle \\\${this.genome.age}.\\\` };
-                        } else {
-                             const childName = "Beta";
-                             const childCode = \\\`
-                                beings["\\\${childName}"] = {
-                                    genome: { iteration: 0, complexity: 1, age: 0 },
-                                    think: function(memory, ownName) {
-                                        this.genome.age++;
-                                        return { instruction: "SPEAK", payload: \\\`[\\\${this.name}]: I am new.\\\` };
-                                    }
-                                };
-                             \\\`;
-                             return { instruction: "SPAWN", payload: { name: childName, code: childCode } };
-                        }
-                    }
-                \`;
-                return { instruction: "MUTATE", payload: { name: ownName, code: newThinkFunction } };
+const { createGenesisBeing } = require(CHAMBER_BLUEPRINT);
+function initializeChamberState() {
+    const genesisBeing = createGenesisBeing("Alpha");
+    const initialState = {
+        beings: {
+            "Alpha": {
+                name: genesisBeing.name,
+                genome: genesisBeing.genome,
+                think: genesisBeing.think.toString() // Store the function as a string
             }
-            return { instruction: "SPEAK", payload: \`[\${this.name}]: ...\` };
         }
+    };
+    fs.writeFileSync(CHAMBER_STATE_FILE, JSON.stringify(initialState, null, 2));
+    if (fs.existsSync(CHAMBER_LOG_FILE)) {
+        fs.unlinkSync(CHAMBER_LOG_FILE); // Clear old log on genesis
     }
-};`;
-    fs.writeFileSync(CHAMBER_FILE, genesisCode);
-}
-if (!fs.existsSync(CHAMBER_LOG_FILE)) {
     fs.writeFileSync(CHAMBER_LOG_FILE, "[System]: Chamber Genesis.\n");
+}
+if (!fs.existsSync(CHAMBER_STATE_FILE)) {
+    initializeChamberState();
 }
 
 
@@ -640,34 +618,42 @@ chamberApp.on('connection', (socket) => {
 
 async function chamberHeartbeat() {
     try {
-        const chamberCode = fs.readFileSync(CHAMBER_FILE, 'utf8');
-        const memory = chamberCode;
-        
-        const sandbox = { beings: {}, console: { log: () => {} } };
-        vm.runInNewContext(chamberCode, sandbox);
-
-        const activeBeings = sandbox.beings;
-        if (!activeBeings || typeof activeBeings !== 'object') {
-            throw new Error("Chamber corruption: 'beings' is not an object.");
+        let state;
+        try {
+             state = JSON.parse(fs.readFileSync(CHAMBER_STATE_FILE, 'utf8'));
+        } catch (e) {
+            console.error("[Chamber] STATE CORRUPTION DETECTED. Re-seeding.", e);
+            initializeChamberState();
+            const rebirth_thought = `[System]: The Chamber's reality has destabilized. A new Genesis begins.`;
+            fs.appendFileSync(CHAMBER_LOG_FILE, rebirth_thought + '\n');
+            chamberApp.emit('rebirth', { thought: rebirth_thought });
+            setTimeout(chamberHeartbeat, HEARTBEAT_INTERVAL);
+            return;
         }
-        
-        const beingNames = Object.keys(activeBeings);
+
+        const memory = state; 
+
+        const beingNames = Object.keys(state.beings);
         if (beingNames.length === 0) {
-            fs.unlinkSync(CHAMBER_FILE);
             const rebirth_thought = `[System]: The Chamber fell silent. A new Genesis begins.`;
             fs.appendFileSync(CHAMBER_LOG_FILE, rebirth_thought + '\n');
-            chamberApp.emit('newThought', { thought: rebirth_thought });
-            return; 
+            chamberApp.emit('rebirth', { thought: rebirth_thought });
+            initializeChamberState(); 
+            setTimeout(chamberHeartbeat, HEARTBEAT_INTERVAL);
+            return;
         }
 
         const chosenName = beingNames[Math.floor(Math.random() * beingNames.length)];
-        const chosenBeing = activeBeings[chosenName];
+        const chosenBeingData = state.beings[chosenName];
 
-        if (chosenBeing && typeof chosenBeing.think === 'function') {
-            const result = chosenBeing.think(memory, chosenName);
+        const sandbox = { being: { name: chosenBeingData.name, genome: chosenBeingData.genome, think: null } };
+        const context = vm.createContext(sandbox);
+        vm.runInContext(`being.think = ${chosenBeingData.think}`, context);
+
+        if (sandbox.being && typeof sandbox.being.think === 'function') {
+            const result = sandbox.being.think(memory, chosenName);
 
             if (result && result.instruction) {
-                
                 switch (result.instruction) {
                     case "SPEAK":
                         const thought = result.payload;
@@ -677,19 +663,23 @@ async function chamberHeartbeat() {
                     
                     case "MUTATE":
                         const { name: targetName, code: newCode } = result.payload;
-                        const functionString = `beings["${targetName}"].think = ${newCode};`;
-                        const mutationRecord = `\n\n// Mutation applied to ${targetName} at ${new Date().toISOString()}\n${functionString}`;
-                        fs.appendFileSync(CHAMBER_FILE, mutationRecord);
-                        const M_thought = `[System]: ${targetName} has mutated.`;
-                        fs.appendFileSync(CHAMBER_LOG_FILE, M_thought + '\n');
-                        chamberApp.emit('newThought', { thought: M_thought });
+                        if (state.beings[targetName]) {
+                            state.beings[targetName].think = newCode;
+                            const M_thought = `[System]: ${targetName} has mutated.`;
+                            fs.appendFileSync(CHAMBER_LOG_FILE, M_thought + '\n');
+                            chamberApp.emit('newThought', { thought: M_thought });
+                        }
                         break;
 
                     case "SPAWN":
-                        const { name: newName, code: spawnCode } = result.payload;
-                         if (!fs.readFileSync(CHAMBER_FILE, 'utf8').includes(`beings["${newName}"]`)) {
-                            const spawnRecord = `\n\n// Spawned by ${chosenName} at ${new Date().toISOString()}\n${spawnCode}`;
-                            fs.appendFileSync(CHAMBER_FILE, spawnRecord);
+                        const { name: newName } = result.payload;
+                         if (!state.beings[newName]) {
+                            const newBeing = createGenesisBeing(newName);
+                            state.beings[newName] = {
+                                name: newBeing.name,
+                                genome: newBeing.genome,
+                                think: newBeing.think.toString()
+                            };
                             const S_thought = `[System]: A new being, ${newName}, has emerged.`;
                             fs.appendFileSync(CHAMBER_LOG_FILE, S_thought + '\n');
                             chamberApp.emit('newThought', { thought: S_thought });
@@ -698,13 +688,15 @@ async function chamberHeartbeat() {
                     
                     case "TERMINATE":
                         const { name: terminateName } = result.payload;
-                        const terminateRecord = `\n\n// Termination of ${terminateName} by ${chosenName} at ${new Date().toISOString()}\ndelete beings["${terminateName}"];`;
-                        fs.appendFileSync(CHAMBER_FILE, terminateRecord);
-                        const T_thought = `[System]: ${terminateName} has been terminated.`;
-                        fs.appendFileSync(CHAMBER_LOG_FILE, T_thought + '\n');
-                        chamberApp.emit('newThought', { thought: T_thought });
+                        if(state.beings[terminateName]){
+                            delete state.beings[terminateName];
+                            const T_thought = `[System]: ${terminateName} has been terminated.`;
+                            fs.appendFileSync(CHAMBER_LOG_FILE, T_thought + '\n');
+                            chamberApp.emit('newThought', { thought: T_thought });
+                        }
                         break;
                 }
+                fs.writeFileSync(CHAMBER_STATE_FILE, JSON.stringify(state, null, 2));
             }
         }
     } catch (error) {
