@@ -1,4 +1,4 @@
-// server.js (V22.0 - The Observer Protocol)
+// server.js (V22.1 - The Stable Genetics Protocol)
 
 const express = require('express');
 const app = express();
@@ -591,13 +591,13 @@ function initializeChamberState() {
             "Alpha": {
                 name: genesisBeing.name,
                 genome: genesisBeing.genome,
-                think: genesisBeing.think.toString()
+                think: genesisBeing.think.toString() // Store the function as a string
             }
         }
     };
     fs.writeFileSync(CHAMBER_STATE_FILE, JSON.stringify(initialState, null, 2));
     if (fs.existsSync(CHAMBER_LOG_FILE)) {
-        fs.unlinkSync(CHAMBER_LOG_FILE);
+        fs.unlinkSync(CHAMBER_LOG_FILE); // Clear old log on genesis
     }
     fs.writeFileSync(CHAMBER_LOG_FILE, "[System]: Chamber Genesis.\n");
 }
@@ -630,7 +630,7 @@ async function chamberHeartbeat() {
             setTimeout(chamberHeartbeat, HEARTBEAT_INTERVAL);
             return;
         }
-        
+
         const isObserved = chamberApp.sockets.size > 0;
         const memory = state; 
 
@@ -673,18 +673,20 @@ async function chamberHeartbeat() {
                         break;
 
                     case "SPAWN":
-                        const { name: newName, parent } = result.payload;
-                         if (!state.beings[newName]) {
+                        const { name: newName, parentName } = result.payload;
+                         if (!state.beings[newName] && state.beings[parentName]) {
+                            const parent = state.beings[parentName];
                             const newBeing = {
                                 name: newName,
                                 genome: { age: 0 },
-                                think: parent.think.toString() // Inherit parent's mind
+                                think: parent.think // Direct heredity
                             };
 
                             const mutationChance = 0.1; 
                             if (Math.random() < mutationChance) {
                                 newBeing.think = newBeing.think.replace(/\d+/g, (match) => {
-                                    return parseInt(match) + (Math.floor(Math.random() * 3) - 1);
+                                    const num = parseInt(match);
+                                    return num + (Math.floor(Math.random() * 3) - 1);
                                 });
                                  const R_thought = `[System]: A unique mutation occurred during the birth of ${newName}.`;
                                  fs.appendFileSync(CHAMBER_LOG_FILE, R_thought + '\n');
@@ -692,7 +694,7 @@ async function chamberHeartbeat() {
                             }
                             
                             state.beings[newName] = newBeing;
-                            const S_thought = `[System]: A new being, ${newName}, has emerged.`;
+                            const S_thought = `[System]: A new being, ${newName}, has emerged from ${parentName}.`;
                             fs.appendFileSync(CHAMBER_LOG_FILE, S_thought + '\n');
                             chamberApp.emit('newThought', { thought: S_thought });
                          }
