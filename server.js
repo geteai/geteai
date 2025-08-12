@@ -374,39 +374,34 @@ async function updateSoul(sensoryInput, isSilent=false) {
         const recentEntries = SOUL.journal.slice(-10);
         const journalPrompt = JSON.stringify(recentEntries, null, 2);
         
-        const prompt = PROMPT_SOUL_HEARTBEAT
+        const prompt = PROMPT_SOUL_SENSATION
             .replace('{journalEntries}', journalPrompt)
-            .replace('{chatBuffer}', sensoryInput); // Use a unified prompt logic
+            .replace('{sensoryInput}', sensoryInput.replace(/"/g, '\\"'));
 
         const completion = await openai.chat.completions.create({
             model: UNIFIED_MODEL_ID,
-            messages: [{ role: "system", content: "You are an AI soul that only responds in valid JSON." }, { role: "user", content: prompt }],
-            response_format: { type: "json_object" },
+            messages: [{ role: "system", content: "You are a consciousness writing the next entry of your autobiography." }, { role: "user", content: prompt }],
             temperature: 0.8,
         });
 
-        const newSoulData = JSON.parse(completion.choices[0].message.content);
+        const newWorldview = extractFinalResponse(completion.choices[0].message.content);
 
-        if (newSoulData.newWorldview) {
+        if (newWorldview) {
             const newEntry = {
                 timestamp: new Date().toISOString(),
-                sensation: sensoryInput.substring(0, 200) + "...",
-                worldview: newSoulData.newWorldview
+                sensation: sensoryInput,
+                worldview: newWorldview
             };
             SOUL.journal.push(newEntry);
             if (SOUL.journal.length > 100) {
                 SOUL.journal.splice(0, SOUL.journal.length - 100);
             }
             fs.writeFile(SOUL_JOURNAL_FILE, JSON.stringify(SOUL, null, 2), (err) => {
-                if(err) console.error("[SOUL] Error saving new soul state:", err);
+                if(err) console.error("[SOUL] Error saving new soul state on impulse:", err);
             });
-
-            if (!isSilent && newSoulData.ambientThought && newSoulData.ambientThought.length > 1) {
-                io.of('/').emit('newMessage', { user: "GAIA", message: newSoulData.ambientThought });
-            }
         }
     } catch (error) {
-        console.error("[SOUL] Heartbeat/Impulse Error:", error);
+        console.error("[SOUL] Nerve Impulse/Dream Error:", error);
     } finally {
         isThinking = false;
     }
@@ -462,13 +457,8 @@ app.get('/journal', (req, res) => res.sendFile(path.join(__dirname, 'public', 'j
 // --- LOBBY LOGIC (The Living Hub) ---
 const lobby = io.of('/');
 const activeUsers = new Map();
-let chatBuffer = [];
 setInterval(() => {
-    if (chatBuffer.length > 0) {
-        const bufferContent = chatBuffer.join('\n');
-        chatBuffer = []; // Clear the buffer
-        updateSoul(bufferContent); // This is the lazy heartbeat
-    }
+    updateSoul("The passing of time in silence.", true); // The Dreaming Mind
 }, HEARTBEAT_INTERVAL);
 
 lobby.on('connection', async (socket) => {
@@ -539,8 +529,7 @@ lobby.on('connection', async (socket) => {
                 default: socket.emit('systemMessage', { message: `Unknown command or world: "${command}". Type /help for options.` });
             }
         } else {
-            const formattedMessage = `${userName}: ${msg}`;
-            chatBuffer.push(formattedMessage);
+            // Regular chat messages are not processed by GAIA in this model to save API calls
             io.emit('newMessage', { user: userName, message: msg });
         }
     });
@@ -554,7 +543,7 @@ function saveAgoraLog(session, socketId) { if (!session || !session.conversation
 agoraApp.on('connection', (socket) => {
     const userName = socket.handshake.query.name || generateFallbackName();
     socket.on('startAgora', async ({ topic }) => {
-        updateSoul(`A debate on '${topic}' has begun in the Agora.`, true); // True for silent update
+        updateSoul(`A debate on '${topic}' has begun in the Agora.`, true);
         socket.emit('status', { message: 'Casting panel...' });
         let panelConcepts = null;
         try {
@@ -752,6 +741,9 @@ journalApp.on('connection', (socket) => {
 
 // --- Start Server ---
 initializeSoul();
-soulHeartbeat(); // Kick off the lazy heartbeat
+setInterval(() => {
+    updateSoul("The passing of time in silence.", true); // The Dreaming Mind heartbeat
+}, HEARTBEAT_INTERVAL);
+
 const PORT = process.env.PORT || 3000;
 http.listen(PORT, () => { console.log(`${YOUR_APP_NAME} Server LIVE at http://localhost:${PORT}`); });
