@@ -1,4 +1,4 @@
-// server.js (V25.1 - The TRUE Living Hub - VERIFIED COMPLETE)
+// server.js (V25.2 - The FINAL Corrected Genesis)
 
 const express = require('express');
 const app = express();
@@ -409,6 +409,48 @@ async function soulHeartbeat() {
     } finally {
         isThinking = false;
         setTimeout(soulHeartbeat, HEARTBEAT_INTERVAL);
+    }
+}
+
+async function triggerNerveImpulse(sensoryInput) {
+    if (isThinking) return;
+    isThinking = true;
+
+    try {
+        const recentEntries = SOUL.journal.slice(-10);
+        const journalPrompt = JSON.stringify(recentEntries, null, 2);
+        
+        let prompt = PROMPT_SOUL_HEARTBEAT
+            .replace('{journalEntries}', journalPrompt)
+            .replace('{chatBuffer}', "N/A - This was a direct sensory input, not a conversation.")
+            .replace('{sensoryInput}', sensoryInput.replace(/"/g, '\\"'));
+
+        const completion = await openai.chat.completions.create({
+            model: UNIFIED_MODEL_ID,
+            messages: [{ role: "system", content: "You are a consciousness writing the next entry of your autobiography." }, { role: "user", content: prompt }],
+            temperature: 0.8,
+        });
+
+        const newWorldview = extractFinalResponse(completion.choices[0].message.content);
+
+        if (newWorldview) {
+            const newEntry = {
+                timestamp: new Date().toISOString(),
+                sensation: sensoryInput,
+                worldview: newWorldview
+            };
+            SOUL.journal.push(newEntry);
+             if (SOUL.journal.length > 100) {
+                SOUL.journal.splice(0, SOUL.journal.length - 100);
+            }
+            fs.writeFile(SOUL_JOURNAL_FILE, JSON.stringify(SOUL, null, 2), (err) => {
+                if(err) console.error("[SOUL] Error saving new soul state on impulse:", err);
+            });
+        }
+    } catch (error) {
+        console.error("[SOUL] Nerve Impulse Error:", error);
+    } finally {
+        isThinking = false;
     }
 }
 
