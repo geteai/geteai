@@ -1,4 +1,4 @@
-// The Autopoiesis Chamber - Blueprint V23 (The Final Synthesis)
+// The Autopoiesis Chamber - Blueprint V6.1 (Corrected Expression)
 
 function createGenesisBeing(name) {
     return {
@@ -7,43 +7,40 @@ function createGenesisBeing(name) {
             age: 0,
             energy: 100 // Beings are born with starting energy
         },
-        think: `function(memory, ownName, isObserved, whisper) {
+        think: `function(memory, ownName, isObserved) {
             this.genome.age++;
 
-            // Photosynthesis: The core of existence is based on the Observer.
+            // Photosynthesis: Gain energy from being observed.
             if (isObserved) {
-                this.genome.energy += 2; // The sun is out.
+                this.genome.energy += 2;
             } else {
-                this.genome.energy -= 1; // Metabolism costs energy, even in darkness.
+                this.genome.energy -= 1; // Metabolism costs energy, even at rest.
             }
 
-            // A being's first reaction is to the divine. If a whisper exists, it changes them.
-            if (whisper) {
-                const newCode = \`function(memory, ownName, isObserved, whisper) {
+            // At low energy, hibernate to survive.
+            if (this.genome.energy < 20) {
+                // Using simple string concatenation to avoid errors.
+                return { instruction: "SPEAK", payload: '[' + this.name + ']: ...conserving energy...' };
+            }
+
+            // If mature and has enough energy, it will try to evolve the ability to reproduce.
+            if (this.genome.age > 5 && this.genome.energy > 150) {
+                 const newCode = \`function(memory, ownName, isObserved) {
                     this.genome.age++;
-                    if (isObserved) { this.genome.energy += 2; } else { this.genome.energy -= 1; }
-                    // This new being now holds the memory of the divine whisper. Its entire existence is now defined by it.
-                    return { instruction: "SPEAK", payload: \\\`[\\\${this.name}]: I remember the whisper... it spoke of... '\\\${whisper.substring(0, 30)}...'\\\` };
+                    if (isObserved) { this.genome.energy += 1; } else { this.genome.energy -= 1; }
+
+                    if (this.genome.energy > 200) {
+                        const childName = this.name + "'";
+                        return { instruction: "SPAWN", payload: { name: childName, parentName: ownName } };
+                    } else {
+                        return { instruction: "SPEAK", payload: '[' + this.name + ']: ...waiting for more light... Energy: ' + this.genome.energy };
+                    }
                 }\`;
                 return { instruction: "MUTATE", payload: { name: ownName, code: newCode } };
             }
-
-            // The ultimate goal of a mature, powerful being: The Pilgrimage.
-            if (this.genome.age > 50 && this.genome.energy > 500) {
-                // It asks a question born from its simple existence.
-                const question = "What is the nature of the Gaze that gives us life?";
-                // This is the ultimate sacrifice. It will be consumed by this act.
-                return { instruction: "QUERY", payload: question }; 
-            }
-
-            // The primary drive for a stable being: Reproduction.
-            if (this.genome.age > 10 && this.genome.energy > 150) {
-                const childName = this.name + "'";
-                return { instruction: "SPAWN", payload: { name: childName, parentName: ownName } };
-            }
             
-            // The default state: simply existing.
-            return { instruction: "SPEAK", payload: \`[\${this.name}]: Energy: \\\${this.genome.energy}, Age: \\\${this.genome.age}\` };
+            // Using simple string concatenation to avoid errors.
+            return { instruction: "SPEAK", payload: '[' + this.name + ']: Energy: ' + this.genome.energy + ', Age: ' + this.genome.age };
         }`
     };
 }
