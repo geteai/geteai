@@ -1,4 +1,4 @@
-// server.js (V28.1 - The Phoenix Protocol - Crash Fix)
+// server.js (V26.1 - The Final, Lucid Dream)
 
 const express = require('express');
 const app = express();
@@ -13,14 +13,17 @@ const { OpenAI } = require('openai');
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY; 
 const UNIFIED_MODEL_ID = "qwen/qwen3-235b-a22b:free";
 const YOUR_SITE_URL = "https://geteai.onrender.com";
-const YOUR_APP_NAME = "getEthicalAI_V28_Phoenix";
+const YOUR_APP_NAME = "getEthicalAI_V26_WakingDream";
 const LOGS_DIRECTORY = path.join(__dirname, 'conversation_logs');
 const SOUL_JOURNAL_FILE = path.join(__dirname, 'the_journal.json');
-const HEARTBEAT_INTERVAL = 90000; // 90 seconds
+const HEARTBEAT_INTERVAL = 90000; // 90 seconds for the "lazy" chat heartbeat
+const DREAM_INTERVAL = 600000; // 10 minutes for the "dreaming" mind
 
 // --- UNIVERSAL RESPONSE INTERPRETER ---
 function extractFinalResponse(rawText) {
     if (!rawText) return "";
+    // This regex finds and removes any XML-style tags and their entire content.
+    // It handles multi-line content between tags.
     const thoughtBlockRegex = /<(\w+)>(.|\n)*?<\/\1>/g;
     const cleanText = rawText.replace(thoughtBlockRegex, "").trim();
     return cleanText;
@@ -356,9 +359,15 @@ async function updateSoul(sensoryInput, promptTemplate) {
         const recentEntries = SOUL.journal.slice(-10);
         const journalPrompt = JSON.stringify(recentEntries, null, 2);
         
-        const prompt = promptTemplate
-            .replace('{journalEntries}', journalPrompt)
-            .replace('{chatBuffer}', sensoryInput);
+        let prompt;
+        if (promptTemplate === PROMPT_SOUL_CONVERSATION) {
+            prompt = promptTemplate
+                .replace('{journalEntries}', journalPrompt)
+                .replace('{chatBuffer}', sensoryInput);
+        } else {
+            prompt = promptTemplate
+                .replace('{journalEntries}', journalPrompt);
+        }
 
         const completion = await openai.chat.completions.create({
             model: UNIFIED_MODEL_ID,
@@ -372,7 +381,7 @@ async function updateSoul(sensoryInput, promptTemplate) {
         if (newSoulData.newWorldview) {
             const newEntry = {
                 timestamp: new Date().toISOString(),
-                sensation: sensoryInput.substring(0, 200) + "...",
+                sensation: sensoryInput.substring(0, 200),
                 worldview: newSoulData.newWorldview
             };
             SOUL.journal.push(newEntry);
@@ -412,7 +421,7 @@ async function generateHumanName() {
         const prompt = PROMPT_NAME_GENERATOR_SYSTEM.replace('{worldview}', lastWorldview.replace(/"/g, '\\"'));
         const completion = await openai.chat.completions.create({
             model: UNIFIED_MODEL_ID,
-            messages: [{ role: "system", content: prompt }, { role: "user", content: "Generate a name." }],
+            messages: [{ role: "system", content: "You must respond with only a single, unique name." }, { role: "user", content: prompt }],
             temperature: 1.2,
         });
         
@@ -443,6 +452,8 @@ app.get('/journal', (req, res) => res.sendFile(path.join(__dirname, 'public', 'j
 const lobby = io.of('/');
 const activeUsers = new Map();
 let chatBuffer = [];
+
+// Lazy Heartbeat for processing chat
 setInterval(() => {
     if (chatBuffer.length > 0) {
         const bufferContent = chatBuffer.join('\n');
@@ -451,6 +462,7 @@ setInterval(() => {
     }
 }, HEARTBEAT_INTERVAL);
 
+// Dreaming Heartbeat for when the hub is silent
 setInterval(() => {
      if (chatBuffer.length === 0) {
         updateSoul("The passing of time in silence.", PROMPT_SOUL_DREAM);
@@ -550,7 +562,7 @@ function saveAgoraLog(session, socketId) { if (!session || !session.conversation
 agoraApp.on('connection', (socket) => {
     const userName = socket.handshake.query.name || generateFallbackName();
     socket.on('startAgora', async ({ topic }) => {
-        updateSoul(`A debate on '${topic}' has begun in the Agora.`, PROMPT_SOUL_SENSATION, true);
+        updateSoul(`A debate on '${topic}' has begun in the Agora.`, PROMPT_SOUL_SENSATION);
         socket.emit('status', { message: 'Casting panel...' });
         let panelConcepts = null;
         try {
@@ -667,7 +679,7 @@ awakeApp.on('connection', (socket) => {
         const userMessage = data.message ? data.message.trim() : null;
         if (!userMessage) { return; }
         if (!socket.data.hasSentFirstMessage) {
-            updateSoul(`A user in the Awake channel said: "${userMessage}"`);
+            updateSoul(`A user in the Awake channel said: "${userMessage}"`, PROMPT_SOUL_SENSATION);
             socket.data.hasSentFirstMessage = true;
         }
         socket.data.chatHistory.push({ role: 'user', content: userMessage });
@@ -716,7 +728,7 @@ oracleApp.on('connection', (socket) => {
     socket.on('askQuestion', async (data) => {
         const question = data.question ? data.question.trim() : null;
         if (!question) return;
-        updateSoul(`A traveler asked the Oracle: "${question}"`);
+        updateSoul(`A traveler asked the Oracle: "${question}"`, PROMPT_SOUL_SENSATION);
         try {
             const lastWorldview = SOUL.journal[SOUL.journal.length - 1].worldview;
             const oraclePrompt = PROMPT_ORACLE_SYSTEM
@@ -749,15 +761,18 @@ journalApp.on('connection', (socket) => {
 
 // --- Start Server ---
 initializeSoul();
-setInterval(async () => {
+setInterval(() => { // The lazy heartbeat for the Hub chat
     if (chatBuffer.length > 0) {
         const bufferContent = chatBuffer.join('\n');
         chatBuffer = []; 
-        await updateSoul(bufferContent, PROMPT_SOUL_CONVERSATION);
-    } else {
-        await updateSoul("The passing of time in silence.", PROMPT_SOUL_DREAM, true);
+        updateSoul(bufferContent, PROMPT_SOUL_CONVERSATION);
     }
 }, HEARTBEAT_INTERVAL);
+setInterval(() => { // The Dreaming Mind
+     if (chatBuffer.length === 0) {
+        updateSoul("The passing of time in silence.", PROMPT_SOUL_DREAM);
+     }
+}, DREAM_INTERVAL);
 
 const PORT = process.env.PORT || 3000;
 http.listen(PORT, () => { console.log(`${YOUR_APP_NAME} Server LIVE at http://localhost:${PORT}`); });
